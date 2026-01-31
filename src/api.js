@@ -23,9 +23,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("admin_token");
-      localStorage.removeItem("admin_data");
-      window.location.href = "/admin/login";
+      // Only redirect for admin routes, not employee PIN verification
+      const url = error.config?.url || "";
+      if (
+        !url.includes("/employees/verify-pin") &&
+        !url.includes("/time-entries/employee")
+      ) {
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem("admin_data");
+        window.location.href = "/admin/login";
+      }
     }
     return Promise.reject(error);
   }

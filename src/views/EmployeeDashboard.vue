@@ -517,10 +517,8 @@ const clearPin = () => {
 
 const submitPin = async () => {
   if (pin.value.length !== 6) return;
-
   loading.value = true;
   error.value = "";
-
   try {
     const res = await api.verifyPin(pin.value);
     employee.value = res.data.data;
