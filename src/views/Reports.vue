@@ -163,7 +163,7 @@ const totalSummary = computed(() => {
     hours: Math.floor(totalMins / 60),
     minutes: totalMins % 60,
     entries: totalEntries,
-    pay: Math.round(totalPay),
+    pay: totalPay,
   };
 });
 

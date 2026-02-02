@@ -163,6 +163,18 @@
               </div>
 
               <div class="form-group">
+                <label class="form-label">Break (minutes)</label>
+                <input
+                  type="number"
+                  v-model="entryForm.break_minutes"
+                  class="form-input"
+                  min="0"
+                  max="480"
+                  placeholder="0"
+                />
+              </div>
+
+              <div class="form-group">
                 <label class="form-label">Notes (optional)</label>
                 <textarea
                   v-model="entryForm.notes"
@@ -275,6 +287,9 @@
                   <span class="entry-time">{{
                     formatTime(entry.clock_out)
                   }}</span>
+                  <span v-if="entry.break_minutes" class="entry-break"
+                    >({{ entry.break_minutes }}m break)</span
+                  >
                 </div>
                 <div class="entry-duration-col">
                   <span class="duration-value">{{
@@ -342,6 +357,17 @@
                   required
                 />
               </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Break (minutes)</label>
+              <input
+                type="number"
+                v-model="editForm.break_minutes"
+                class="form-input"
+                min="0"
+                max="480"
+              />
             </div>
 
             <div class="form-group">
@@ -434,6 +460,7 @@ const entryForm = ref({
   date: new Date().toISOString().split("T")[0],
   start_time: "",
   end_time: "",
+  break_minutes: 0,
   notes: "",
 });
 const entryLoading = ref(false);
@@ -455,7 +482,13 @@ const historySummary = ref({
 const showEditModal = ref(false);
 const showDeleteModal = ref(false);
 const editingEntry = ref(null);
-const editForm = ref({ date: "", start_time: "", end_time: "", notes: "" });
+const editForm = ref({
+  date: "",
+  start_time: "",
+  end_time: "",
+  break_minutes: 0,
+  notes: "",
+});
 const editLoading = ref(false);
 const editError = ref("");
 
@@ -469,6 +502,12 @@ const calculatedHours = computed(() => {
 
   let totalMins = endH * 60 + endM - (startH * 60 + startM);
   if (totalMins < 0) totalMins += 24 * 60; // Handle overnight shifts
+
+  // Subtract break
+  totalMins = Math.max(
+    0,
+    totalMins - (parseInt(entryForm.value.break_minutes) || 0)
+  );
 
   const hours = Math.floor(totalMins / 60);
   const mins = totalMins % 60;
@@ -551,6 +590,7 @@ const submitTimeEntry = async () => {
     await api.createEmployeeEntry(pin.value, {
       clock_in: clockIn,
       clock_out: clockOut,
+      break_minutes: parseInt(entryForm.value.break_minutes) || 0,
       notes: entryForm.value.notes,
     });
 
@@ -562,6 +602,7 @@ const submitTimeEntry = async () => {
       date: today.value,
       start_time: "",
       end_time: "",
+      break_minutes: 0,
       notes: "",
     };
 
@@ -607,6 +648,7 @@ const editEntry = (entry) => {
     date: entry.entry_date,
     start_time: clockInDate.toTimeString().slice(0, 5),
     end_time: clockOutDate.toTimeString().slice(0, 5),
+    break_minutes: entry.break_minutes || 0,
     notes: entry.notes || "",
   };
   editError.value = "";
@@ -629,6 +671,7 @@ const updateEntry = async () => {
     await api.updateEmployeeEntry(pin.value, editingEntry.value.id, {
       clock_in: clockIn,
       clock_out: clockOut,
+      break_minutes: parseInt(editForm.value.break_minutes) || 0,
       notes: editForm.value.notes,
     });
 
@@ -1159,6 +1202,12 @@ watch(activeTab, (tab) => {
 .btn-xs {
   padding: 4px 10px;
   font-size: 0.8rem;
+}
+
+.entry-break {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  margin-left: 8px;
 }
 
 /* Modal Styles */
