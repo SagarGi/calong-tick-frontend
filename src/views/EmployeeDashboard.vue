@@ -296,17 +296,73 @@
                     formatDuration(entry.total_minutes)
                   }}</span>
                 </div>
-                <div class="entry-actions-col">
-                  <button
-                    @click="editEntry(entry)"
-                    class="btn btn-outline btn-xs"
-                  >
-                    Edit
-                  </button>
-                </div>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div
+      v-if="showConfirmModal"
+      class="modal-overlay"
+      @click.self="showConfirmModal = false"
+    >
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Confirm Time Entry</h3>
+          <button @click="showConfirmModal = false" class="modal-close">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="confirm-intro">
+            Please review your time entry before submitting:
+          </p>
+
+          <div class="confirm-summary">
+            <div class="confirm-row">
+              <span class="confirm-label">Date : </span>
+              <span class="confirm-value"><b>{{
+                formatConfirmDate(entryForm.date)
+              }}</b></span>
+            </div>
+            <div class="confirm-row">
+              <span class="confirm-label">Start Time : </span>
+              <span class="confirm-value"><b>{{ entryForm.start_time }}</b></span>
+            </div>
+            <div class="confirm-row">
+              <span class="confirm-label">End Time : </span>
+              <span class="confirm-value">{{ entryForm.end_time }}</span>
+            </div>
+            <div class="confirm-row" v-if="entryForm.break_minutes > 0">
+              <span class="confirm-label">Break : </span>
+              <span class="confirm-value"
+                ><b>{{ entryForm.break_minutes }} minutes</b></span
+              >
+            </div>
+            <div class="confirm-row total">
+              <span class="confirm-label">Total Hours : </span>
+              <span class="confirm-value highlight"><b>{{ calculatedHours }}</b></span>
+            </div>
+            <div class="confirm-row" v-if="entryForm.notes">
+              <span class="confirm-label">Notes</span>
+              <span class="confirm-value">{{ entryForm.notes }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button @click="showConfirmModal = false" class="btn btn-outline">
+            Go Back
+          </button>
+          <button
+            @click="confirmAndSubmit"
+            class="btn btn-primary"
+            :disabled="entryLoading"
+          >
+            {{ entryLoading ? "Submitting..." : "Confirm & Submit" }}
+          </button>
         </div>
       </div>
     </div>
@@ -466,6 +522,7 @@ const entryForm = ref({
 const entryLoading = ref(false);
 const entryMessage = ref("");
 const entryMessageType = ref("success");
+const showConfirmModal = ref(false);
 
 // History State
 const historyPeriod = ref("week");
@@ -514,6 +571,16 @@ const calculatedHours = computed(() => {
 
   return `${hours}h ${mins}m`;
 });
+
+const formatConfirmDate = (dateStr) => {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+};
 
 const estimatedEarnings = computed(() => {
   const totalMins =
@@ -579,7 +646,25 @@ const logout = () => {
 };
 
 // Time Entry Functions
-const submitTimeEntry = async () => {
+// Show confirmation modal instead of submitting directly
+const submitTimeEntry = () => {
+  // Validate form first
+  if (
+    !entryForm.value.date ||
+    !entryForm.value.start_time ||
+    !entryForm.value.end_time
+  ) {
+    entryMessage.value = "Please fill in all required fields";
+    entryMessageType.value = "error";
+    return;
+  }
+
+  // Show confirmation modal
+  showConfirmModal.value = true;
+};
+
+// Actually submit after confirmation
+const confirmAndSubmit = async () => {
   entryLoading.value = true;
   entryMessage.value = "";
 
@@ -593,6 +678,9 @@ const submitTimeEntry = async () => {
       break_minutes: parseInt(entryForm.value.break_minutes) || 0,
       notes: entryForm.value.notes,
     });
+
+    // Close modal
+    showConfirmModal.value = false;
 
     entryMessage.value = "Time entry submitted successfully!";
     entryMessageType.value = "success";
@@ -617,6 +705,7 @@ const submitTimeEntry = async () => {
     entryMessage.value =
       err.response?.data?.message || "Failed to submit time entry";
     entryMessageType.value = "error";
+    showConfirmModal.value = false;
   } finally {
     entryLoading.value = false;
   }
@@ -638,7 +727,8 @@ const loadHistory = async () => {
   }
 };
 
-// Edit Functions
+// This function is of not use of now
+// can be removed if not used in the future anymore
 const editEntry = (entry) => {
   editingEntry.value = entry;
   const clockInDate = new Date(entry.clock_in);
@@ -1269,6 +1359,50 @@ watch(activeTab, (tab) => {
 
   .history-filters {
     justify-content: center;
+  }
+
+  .confirm-intro {
+    color: var(--text-light);
+    margin-bottom: 20px;
+  }
+
+  .confirm-summary {
+    background: var(--bg-cream);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .confirm-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .confirm-row:last-child {
+    border-bottom: none;
+  }
+
+  .confirm-row.total {
+    margin-top: 8px;
+    padding-top: 16px;
+    border-top: 2px solid var(--border);
+    border-bottom: none;
+  }
+
+  .confirm-label {
+    color: var(--text-light);
+    font-weight: 500;
+  }
+
+  .confirm-value {
+    font-weight: 600;
+    color: var(--text-dark);
+  }
+
+  .confirm-value.highlight {
+    font-size: 1.25rem;
+    color: var(--primary);
   }
 }
 </style>
