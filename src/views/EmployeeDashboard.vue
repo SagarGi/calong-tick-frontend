@@ -116,17 +116,6 @@
           <div class="entry-card">
             <h3>Add New Time Entry</h3>
             <p class="text-muted">Enter your work hours for a specific date</p>
-
-            <div
-              v-if="entryMessage"
-              class="alert"
-              :class="
-                entryMessageType === 'success' ? 'alert-success' : 'alert-error'
-              "
-            >
-              {{ entryMessage }}
-            </div>
-
             <form @submit.prevent="submitTimeEntry" class="entry-form">
               <div class="form-row">
                 <div class="form-group">
@@ -324,13 +313,15 @@
           <div class="confirm-summary">
             <div class="confirm-row">
               <span class="confirm-label">Date : </span>
-              <span class="confirm-value"><b>{{
-                formatConfirmDate(entryForm.date)
-              }}</b></span>
+              <span class="confirm-value"
+                ><b>{{ formatConfirmDate(entryForm.date) }}</b></span
+              >
             </div>
             <div class="confirm-row">
               <span class="confirm-label">Start Time : </span>
-              <span class="confirm-value"><b>{{ entryForm.start_time }}</b></span>
+              <span class="confirm-value"
+                ><b>{{ entryForm.start_time }}</b></span
+              >
             </div>
             <div class="confirm-row">
               <span class="confirm-label">End Time : </span>
@@ -344,7 +335,9 @@
             </div>
             <div class="confirm-row total">
               <span class="confirm-label">Total Hours : </span>
-              <span class="confirm-value highlight"><b>{{ calculatedHours }}</b></span>
+              <span class="confirm-value highlight"
+                ><b>{{ calculatedHours }}</b></span
+              >
             </div>
             <div class="confirm-row" v-if="entryForm.notes">
               <span class="confirm-label">Notes</span>
@@ -496,6 +489,32 @@
       </div>
     </div>
   </div>
+
+  <!-- Result Modal (Success/Error) -->
+  <div
+    v-if="showResultModal"
+    class="modal-overlay"
+    @click.self="closeResultModal"
+  >
+    <div class="modal modal-small">
+      <div class="modal-body result-modal-body">
+        <div class="result-icon" :class="resultType">
+          {{ resultType === "success" ? "✓" : "✗" }}
+        </div>
+        <h3 class="result-title" :class="resultType">
+          {{ resultType === "success" ? "Success!" : "Error" }}
+        </h3>
+        <p class="result-message">{{ resultMessage }}</p>
+        <button
+          @click="closeResultModal"
+          class="btn result-btn"
+          :class="resultType"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -520,8 +539,6 @@ const entryForm = ref({
   notes: "",
 });
 const entryLoading = ref(false);
-const entryMessage = ref("");
-const entryMessageType = ref("success");
 const showConfirmModal = ref(false);
 
 // History State
@@ -534,6 +551,11 @@ const historySummary = ref({
   total_hours: 0,
   total_minutes: 0,
 });
+
+// Result Modal State
+const showResultModal = ref(false);
+const resultType = ref("success");
+const resultMessage = ref("");
 
 // Edit Modal State
 const showEditModal = ref(false);
@@ -580,6 +602,11 @@ const formatConfirmDate = (dateStr) => {
     month: "long",
     year: "numeric",
   });
+};
+
+const closeResultModal = () => {
+  showResultModal.value = false;
+  resultMessage.value = "";
 };
 
 const estimatedEarnings = computed(() => {
@@ -663,10 +690,8 @@ const submitTimeEntry = () => {
   showConfirmModal.value = true;
 };
 
-// Actually submit after confirmation
 const confirmAndSubmit = async () => {
   entryLoading.value = true;
-  entryMessage.value = "";
 
   try {
     const clockIn = `${entryForm.value.date}T${entryForm.value.start_time}:00`;
@@ -679,11 +704,13 @@ const confirmAndSubmit = async () => {
       notes: entryForm.value.notes,
     });
 
-    // Close modal
+    // Close confirmation modal
     showConfirmModal.value = false;
 
-    entryMessage.value = "Time entry submitted successfully!";
-    entryMessageType.value = "success";
+    // Show success modal
+    resultType.value = "success";
+    resultMessage.value = "Your time entry has been submitted successfully!";
+    showResultModal.value = true;
 
     // Reset form
     entryForm.value = {
@@ -696,16 +723,16 @@ const confirmAndSubmit = async () => {
 
     // Refresh history
     await loadHistory();
-
-    // Clear message after 3 seconds
-    setTimeout(() => {
-      entryMessage.value = "";
-    }, 3000);
   } catch (err) {
-    entryMessage.value =
-      err.response?.data?.message || "Failed to submit time entry";
-    entryMessageType.value = "error";
+    // Close confirmation modal
     showConfirmModal.value = false;
+
+    // Show error modal
+    resultType.value = "error";
+    resultMessage.value =
+      err.response?.data?.message ||
+      "Failed to submit time entry. Please try again.";
+    showResultModal.value = true;
   } finally {
     entryLoading.value = false;
   }
@@ -1316,6 +1343,105 @@ watch(activeTab, (tab) => {
   max-width: 400px;
 }
 
+.confirm-intro {
+  color: var(--text-light);
+  margin-bottom: 20px;
+}
+
+.confirm-summary {
+  background: var(--bg-cream);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.confirm-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.confirm-row:last-child {
+  border-bottom: none;
+}
+
+.confirm-row.total {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 2px solid var(--border);
+  border-bottom: none;
+}
+
+.confirm-label {
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+.confirm-value {
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.confirm-value.highlight {
+  font-size: 1.25rem;
+  color: var(--primary);
+}
+.result-modal-body {
+  text-align: center;
+  padding: 40px 30px;
+}
+
+.result-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 0 auto 20px;
+}
+
+.result-icon.success {
+  background: #e8f5e9 !important;
+  color: #4a9b6d !important;
+}
+
+.result-icon.error {
+  background: #f5e6e5 !important;
+  color: #c73e3a !important;
+}
+
+.result-title.success {
+  color: #4a9b6d !important;
+}
+
+.result-title.error {
+  color: #c73e3a !important;
+}
+
+.result-message {
+  color: #6b6b6b;
+  margin-bottom: 24px;
+}
+
+.result-btn {
+  min-width: 120px;
+}
+
+.result-btn.success {
+  background: #4a9b6d !important;
+  color: white !important;
+  border: none !important;
+}
+
+.result-btn.error {
+  background: #c73e3a !important;
+  color: white !important;
+  border: none !important;
+}
+
 @media (max-width: 600px) {
   .employee-card {
     flex-direction: column;
@@ -1359,50 +1485,6 @@ watch(activeTab, (tab) => {
 
   .history-filters {
     justify-content: center;
-  }
-
-  .confirm-intro {
-    color: var(--text-light);
-    margin-bottom: 20px;
-  }
-
-  .confirm-summary {
-    background: var(--bg-cream);
-    border-radius: 12px;
-    padding: 20px;
-  }
-
-  .confirm-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .confirm-row:last-child {
-    border-bottom: none;
-  }
-
-  .confirm-row.total {
-    margin-top: 8px;
-    padding-top: 16px;
-    border-top: 2px solid var(--border);
-    border-bottom: none;
-  }
-
-  .confirm-label {
-    color: var(--text-light);
-    font-weight: 500;
-  }
-
-  .confirm-value {
-    font-weight: 600;
-    color: var(--text-dark);
-  }
-
-  .confirm-value.highlight {
-    font-size: 1.25rem;
-    color: var(--primary);
   }
 }
 </style>
