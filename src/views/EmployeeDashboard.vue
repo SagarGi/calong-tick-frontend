@@ -521,6 +521,13 @@
 import { ref, computed, watch } from "vue";
 import api from "../api";
 
+const getLocalDateString = (date = new Date()) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 // PIN & Auth State
 const pin = ref("");
 const employee = ref(null);
@@ -532,7 +539,7 @@ const activeTab = ref("entry");
 
 // Time Entry Form State
 const entryForm = ref({
-  date: new Date().toISOString().split("T")[0],
+  date: getLocalDateString(),
   start_time: "",
   end_time: "",
   break_minutes: 0,
@@ -571,7 +578,7 @@ const editForm = ref({
 const editLoading = ref(false);
 const editError = ref("");
 
-const today = computed(() => new Date().toISOString().split("T")[0]);
+const today = computed(() => getLocalDateString());
 
 const calculatedHours = computed(() => {
   if (!entryForm.value.start_time || !entryForm.value.end_time) return null;
@@ -819,12 +826,14 @@ const deleteEntry = async () => {
 // Formatters
 const formatDay = (dateStr) => {
   if (!dateStr) return "";
-  return new Date(dateStr).toLocaleDateString("en-GB", { weekday: "short" });
+  return new Date(dateStr.replace("Z", "")).toLocaleDateString("en-GB", {
+    weekday: "short",
+  });
 };
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "";
-  return new Date(dateStr).toLocaleDateString("en-GB", {
+  return new Date(dateStr.replace("Z", "")).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
   });
@@ -832,7 +841,8 @@ const formatDate = (dateStr) => {
 
 const formatTime = (dateStr) => {
   if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleTimeString("en-GB", {
+  const localStr = dateStr.replace("Z", "").replace(/\+\d{2}:\d{2}$/, "");
+  return new Date(localStr).toLocaleTimeString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
   });
